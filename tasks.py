@@ -2,6 +2,7 @@ import subprocess
 import time
 import pyautogui
 from pynput import keyboard
+from task_templates import create_gmail_navigation_task, create_excel_setup_task
 
 def open_chrome_with_url(url: str):
     subprocess.run(["open", "-a", "Google Chrome", url])
@@ -40,20 +41,16 @@ def open_excel_with_data():
     pyautogui.hotkey('command', 'n')
     time.sleep(1)
 
-def run_email_excel_workflow():
-    """Run the complete workflow: Open Gmail, navigate emails, then open Excel"""
+def run_email_excel_workflow(num_emails: int = 3):
+    """Run the complete workflow using task templates"""
     print("📧 Starting email and Excel workflow...")
     
-    # Open Gmail
-    open_gmail()
-    print("✅ Gmail opened")
+    # Create and execute Gmail navigation task
+    gmail_task = create_gmail_navigation_task(num_emails)
+    gmail_task.execute()
     
-    # Navigate through emails
-    navigate_emails()
-    print("✅ Navigated through emails")
-    
-    # Open Excel
-    open_excel_with_data()
-    print("✅ Excel opened and ready")
+    # Create and execute Excel setup task
+    excel_task = create_excel_setup_task()
+    excel_task.execute()
     
     print("🎉 Workflow completed!")
