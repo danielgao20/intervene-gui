@@ -1,6 +1,5 @@
-from agent import InterveneAgent
+# main.py
+from agent import agent
 
-if __name__ == "__main__":
-    agent = InterveneAgent()
-    agent.run_task()
-    agent.shutdown()
+todo = "Open Gmail and navigate through 4 emails. Then launch Excel with a blank spreadsheet."
+agent.run(todo)
