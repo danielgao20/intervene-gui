@@ -17,40 +17,86 @@ def open_gmail():
     subprocess.run(["open", "-a", "Google Chrome", "https://mail.google.com"])
     time.sleep(5)  # Wait for Gmail to load
 
-def navigate_emails(num_emails=3):
-    """Navigate through a specified number of emails"""
-    # Wait for Gmail to be fully loaded
-    time.sleep(3)
-    
-    # Click on the first email
-    pyautogui.click(x=100, y=200)  # Approximate position of first email
-    time.sleep(1)
-    
-    # Navigate through emails using keyboard
-    for _ in range(num_emails - 1):
-        pyautogui.press('j')  # Gmail shortcut for next email
-        time.sleep(1)
+def create_latest_email_reply_task(text: str = "") -> str:
+    """Open Gmail, open the latest email, draft a reply, and save it as a draft"""
+    print("📧 Starting latest email reply task")
 
-def open_excel_with_data():
-    """Open Excel and prepare it for data entry"""
+    # Step 1: Open Gmail
+    open_gmail()
+
+    # Step 2: Wait for Gmail to fully load
+    time.sleep(3)
+
+    # Step 3: Open the latest email (assumes first email is at y=200)
+    pyautogui.press("enter")
+    print("📨 Opened latest email")
+
+    # Step 4: Reply to the email
+    pyautogui.press("r")
+    time.sleep(1)
+    print("↩️ Replying to email")
+
+    # Step 5: Type the draft
+    draft_text = """Hey Vishnu – that sounds awesome, I've been diving into similar stuff recently and would love to jam. Let's grab lunch on Tuesday after our Algorithms class!
+
+Looking forward,
+Daniel"""
+    pyautogui.write(draft_text, interval=0.05)
+    print("📝 Draft typed")
+
+    # Step 6: Save as draft
+    pyautogui.hotkey("command", "s")
+    print("💾 Draft saved")
+
+    print("✅ Task complete")
+    return "Email reply drafted and saved"
+
+def open_excel_with_data(text: str = "") -> str:
+    """Open Excel and prepare it for data entry with interaction summary"""
     subprocess.run(["open", "-a", "Microsoft Excel"])
     time.sleep(3)  # Wait for Excel to open
     
     # Create a new workbook
     pyautogui.hotkey('command', 'n')
     time.sleep(1)
+    
+    # Create headers
+    headers = ["Metric", "Value"]
+    for col, header in enumerate(headers):
+        pyautogui.write(header)
+        pyautogui.press('tab')
+    pyautogui.press('enter')
+    
+    # Add data rows
+    data = [
+        ["Topic", "LLaMA + Agentic Workflows Discussion"],
+        ["Meeting Type", "Lunch"],
+        ["Time", "Tuesday after Algorithms class"],
+        ["Status", "Draft saved in Gmail"],
+        ["Response Time", "< 1 minute"]
+    ]
+    
+    for row in data:
+        for cell in row:
+            pyautogui.write(cell)
+            pyautogui.press('tab')
+        pyautogui.press('enter')
+    
+    # Format cells (select all used range)
+    pyautogui.hotkey('command', 'a')
+    
+    # Center align
+    pyautogui.hotkey('command', 'e')
+    
+    return "Excel opened with interaction summary"
 
 def run_email_excel_workflow():
     """Run the complete workflow: Open Gmail, navigate emails, then open Excel"""
     print("📧 Starting email and Excel workflow...")
     
     # Open Gmail
-    open_gmail()
-    print("✅ Gmail opened")
-    
-    # Navigate through emails
-    navigate_emails()
-    print("✅ Navigated through emails")
+    create_latest_email_reply_task()
+    print("WORKING")
     
     # Open Excel
     open_excel_with_data()
