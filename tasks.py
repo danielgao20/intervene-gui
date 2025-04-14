@@ -25,7 +25,7 @@ def create_latest_email_reply_task(text: str = "") -> str:
     open_gmail()
 
     # Step 2: Wait for Gmail to fully load
-    time.sleep(3)
+    time.sleep(1)
 
     # Step 3: Open the latest email (assumes first email is at y=200)
     pyautogui.press("enter")
@@ -37,10 +37,10 @@ def create_latest_email_reply_task(text: str = "") -> str:
     print("↩️ Replying to email")
 
     # Step 5: Type the draft
-    draft_text = """Hey Vishnu – that sounds awesome, I've been diving into similar stuff recently and would love to jam. Let's grab lunch on Tuesday after our Algorithms class!
+    draft_text = """Hey Vishnu,\n\nThat sounds awesome, I've been diving into similar stuff recently and would love to jam. Let's grab lunch on Tuesday after our Algorithms class!
 
 Looking forward,
-Daniel"""
+Shubhayan"""
     pyautogui.write(draft_text, interval=0.05)
     print("📝 Draft typed")
 
