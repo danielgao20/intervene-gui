@@ -51,44 +51,66 @@ Shubhayan"""
     print("✅ Task complete")
     return "Email reply drafted and saved"
 
-def open_excel_with_data(text: str = "") -> str:
-    """Open Excel and prepare it for data entry with interaction summary"""
-    subprocess.run(["open", "-a", "Microsoft Excel"])
-    time.sleep(3)  # Wait for Excel to open
-    
-    # Create a new workbook
-    pyautogui.hotkey('command', 'n')
-    time.sleep(1)
-    
-    # Create headers
-    headers = ["Metric", "Value"]
-    for col, header in enumerate(headers):
-        pyautogui.write(header)
-        pyautogui.press('tab')
-    pyautogui.press('enter')
-    
-    # Add data rows
-    data = [
-        ["Topic", "LLaMA + Agentic Workflows Discussion"],
-        ["Meeting Type", "Lunch"],
-        ["Time", "Tuesday after Algorithms class"],
-        ["Status", "Draft saved in Gmail"],
-        ["Response Time", "< 1 minute"]
-    ]
-    
-    for row in data:
-        for cell in row:
-            pyautogui.write(cell)
+def open_excel_with_data(data=None, headers=None) -> str:
+    """Open Excel and prepare it for data entry with dynamic data and headers.
+    Args:
+        data: List of rows (each row is a list of cell values)
+        headers: List of header strings
+    """
+    import pyautogui
+    import subprocess
+    import time
+    if data is None:
+        data = []
+    if headers is None:
+        headers = []
+    max_attempts = 3
+    for attempt in range(max_attempts):
+        print(f"[Excel] Opening Microsoft Excel (attempt {attempt+1})...")
+        subprocess.run(["open", "-a", "Microsoft Excel"])
+        time.sleep(3)
+        # Bring Excel to the foreground
+        subprocess.run(["osascript", "-e", 'tell application "Microsoft Excel" to activate'])
+        time.sleep(2)
+        # Click inside the window to ensure focus (adjust coordinates as needed)
+        pyautogui.click(x=700, y=400)
+        time.sleep(0.5)
+        # Try to create a new workbook
+        print("[Excel] Sending Cmd+N for new workbook...")
+        pyautogui.hotkey('command', 'n')
+        time.sleep(2)
+        # Check if Excel is ready for typing by typing a harmless character and deleting it
+        pyautogui.write('x')
+        time.sleep(0.5)
+        pyautogui.press('backspace')
+        # Optionally: check for window presence (not implemented here)
+        # If no errors, break
+        print("[Excel] New workbook should be open and ready.")
+        break
+    else:
+        print("[Excel] Failed to open Excel and create a new workbook after multiple attempts.")
+        return "Failed to open Excel."
+
+    # Create headers if provided
+    if headers:
+        for header in headers:
+            pyautogui.write(str(header))
             pyautogui.press('tab')
         pyautogui.press('enter')
-    
+
+    # Add data rows
+    for row in data:
+        for cell in row:
+            pyautogui.write(str(cell))
+            pyautogui.press('tab')
+        pyautogui.press('enter')
+
     # Format cells (select all used range)
     pyautogui.hotkey('command', 'a')
-    
     # Center align
     pyautogui.hotkey('command', 'e')
-    
-    return "Excel opened with interaction summary"
+    return "Excel opened with provided data."
+
 
 def run_email_excel_workflow():
     """Run the complete workflow: Open Gmail, navigate emails, then open Excel"""
