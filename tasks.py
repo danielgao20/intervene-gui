@@ -1,127 +1,182 @@
+"""
+tasks.py - Task execution with safer alternatives to PyAutoGUI
+"""
 import subprocess
 import time
-import pyautogui
-from pynput import keyboard
+import os
+import logging
+import json
+from threading import Timer
+from PIL import ImageGrab
+import tempfile
+from vision_analyzer import analyze_screenshot
 
-def open_chrome_with_url(url: str):
-    subprocess.run(["open", "-a", "Google Chrome", url])
+# Configure logging
+logger = logging.getLogger(__name__)
 
-def open_excel():
-    subprocess.run(["open", "-a", "Microsoft Excel"])
+class SafeAutomation:
+    """A safer alternative to PyAutoGUI that uses platform-specific commands"""
+    
+    @staticmethod
+    def paste_text(text):
+        """Paste text at current cursor position using clipboard"""
+        import pyperclip
+        original = pyperclip.paste()
+        pyperclip.copy(text)
+        
+        if os.name == 'posix':  # macOS or Linux
+            subprocess.run(["osascript", "-e", 'tell application "System Events" to keystroke "v" using command down'])
+        elif os.name == 'nt':  # Windows
+            subprocess.run(["powershell", "-command", "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('^v')"])
+        
+        # Restore original clipboard after short delay
+        Timer(0.5, lambda: pyperclip.copy(original)).start()
+        
+    @staticmethod
+    def press_key(key_combination):
+        """Press keys with platform-specific methods"""
+        if os.name == 'posix':  # macOS or Linux
+            if '+' in key_combination:
+                keys = key_combination.split('+')
+                modifiers = []
+                for mod in keys[:-1]:
+                    if mod.lower() == 'cmd' or mod.lower() == 'command':
+                        modifiers.append('command')
+                    elif mod.lower() in ['ctrl', 'control']:
+                        modifiers.append('control')
+                    elif mod.lower() == 'alt':
+                        modifiers.append('option')
+                    elif mod.lower() == 'shift':
+                        modifiers.append('shift')
+                
+                mod_str = ' '.join(f"{m} down" for m in modifiers)
+                key = keys[-1]
+                subprocess.run(["osascript", "-e", f'tell application "System Events" to keystroke "{key}" using {{{mod_str}}}'])
+            else:
+                # Single key press
+                subprocess.run(["osascript", "-e", f'tell application "System Events" to keystroke "{key_combination}"'])
+        elif os.name == 'nt':  # Windows
+            # Map common keys
+            key_map = {
+                'command': '^',  # Control
+                'cmd': '^',
+                'control': '^',
+                'ctrl': '^',
+                'alt': '%',
+                'shift': '+',
+                'enter': '{ENTER}',
+                'tab': '{TAB}',
+                'escape': '{ESC}'
+            }
+            
+            win_combo = key_combination
+            for k, v in key_map.items():
+                win_combo = win_combo.replace(k, v)
+                
+            subprocess.run(["powershell", "-command", f"Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('{win_combo}')"])
 
-def say_hello():
-    print("👋 Hello from your local agent!")
+    @staticmethod
+    def take_screenshot():
+        """Take a screenshot and save to a temporary file"""
+        temp_file = tempfile.NamedTemporaryFile(suffix='.png', delete=False)
+        screenshot = ImageGrab.grab()
+        screenshot.save(temp_file.name)
+        logger.info(f"Screenshot saved to {temp_file.name}")
+        return temp_file.name
 
-def open_gmail():
-    """Open Gmail in Chrome and wait for it to load"""
-    subprocess.run(["open", "-a", "Google Chrome", "https://mail.google.com"])
-    time.sleep(5)  # Wait for Gmail to load
-
-def create_latest_email_reply_task(text: str = "") -> str:
-    """Open Gmail, open the latest email, draft a reply, and save it as a draft"""
-    print("📧 Starting latest email reply task")
-
-    # Step 1: Open Gmail
-    open_gmail()
-
-    # Step 2: Wait for Gmail to fully load
-    time.sleep(1)
-
-    # Step 3: Open the latest email (assumes first email is at y=200)
-    pyautogui.press("enter")
-    print("📨 Opened latest email")
-
-    # Step 4: Reply to the email
-    pyautogui.press("r")
-    time.sleep(1)
-    print("↩️ Replying to email")
-
-    # Step 5: Type the draft
-    draft_text = """Hey Vishnu,\n\nThat sounds awesome, I've been diving into similar stuff recently and would love to jam. Let's grab lunch on Tuesday after our Algorithms class!
-
-Looking forward,
-Shubhayan"""
-    pyautogui.write(draft_text, interval=0.05)
-    print("📝 Draft typed")
-
-    # Step 6: Save as draft
-    pyautogui.hotkey("command", "s")
-    print("💾 Draft saved")
-
-    print("✅ Task complete")
-    return "Email reply drafted and saved"
-
-def open_excel_with_data(data=None, headers=None) -> str:
-    """Open Excel and prepare it for data entry with dynamic data and headers.
-    Args:
-        data: List of rows (each row is a list of cell values)
-        headers: List of header strings
-    """
-    import pyautogui
-    import subprocess
-    import time
-    if data is None:
-        data = []
-    if headers is None:
-        headers = []
-    max_attempts = 3
-    for attempt in range(max_attempts):
-        print(f"[Excel] Opening Microsoft Excel (attempt {attempt+1})...")
-        subprocess.run(["open", "-a", "Microsoft Excel"])
-        time.sleep(3)
-        # Bring Excel to the foreground
-        subprocess.run(["osascript", "-e", 'tell application "Microsoft Excel" to activate'])
-        time.sleep(2)
-        # Click inside the window to ensure focus (adjust coordinates as needed)
-        pyautogui.click(x=700, y=400)
-        time.sleep(0.5)
-        # Try to create a new workbook
-        print("[Excel] Sending Cmd+N for new workbook...")
-        pyautogui.hotkey('command', 'n')
-        time.sleep(2)
-        # Check if Excel is ready for typing by typing a harmless character and deleting it
-        pyautogui.write('x')
-        time.sleep(0.5)
-        pyautogui.press('backspace')
-        # Optionally: check for window presence (not implemented here)
-        # If no errors, break
-        print("[Excel] New workbook should be open and ready.")
-        break
+def run_task_workflow():
+    """Run a workflow based on LLM task analysis"""
+    logger.info("Starting task workflow")
+    
+    # Take a screenshot to analyze the current state
+    screenshot_path = SafeAutomation.take_screenshot()
+    
+    # Analyze screenshot with vision model
+    analysis = analyze_screenshot(screenshot_path)
+    logger.info(f"Screen analysis: {analysis}")
+    
+    # Based on analysis, perform appropriate task
+    if "email" in analysis.lower():
+        result = handle_email_task()
+    elif "spreadsheet" in analysis.lower() or "excel" in analysis.lower():
+        result = handle_spreadsheet_task()
     else:
-        print("[Excel] Failed to open Excel and create a new workbook after multiple attempts.")
-        return "Failed to open Excel."
-
-    # Create headers if provided
-    if headers:
-        for header in headers:
-            pyautogui.write(str(header))
-            pyautogui.press('tab')
-        pyautogui.press('enter')
-
-    # Add data rows
-    for row in data:
-        for cell in row:
-            pyautogui.write(str(cell))
-            pyautogui.press('tab')
-        pyautogui.press('enter')
-
-    # Format cells (select all used range)
-    pyautogui.hotkey('command', 'a')
-    # Center align
-    pyautogui.hotkey('command', 'e')
-    return "Excel opened with provided data."
-
-
-def run_email_excel_workflow():
-    """Run the complete workflow: Open Gmail, navigate emails, then open Excel"""
-    print("📧 Starting email and Excel workflow...")
+        result = "No specific task detected"
     
-    # Open Gmail
-    create_latest_email_reply_task()
-    print("WORKING")
+    # Clean up temporary screenshot
+    os.unlink(screenshot_path)
+    return result
+
+def handle_email_task(draft_text=None):
+    """Handle email-related tasks safely"""
+    logger.info("Handling email task")
     
-    # Open Excel
-    open_excel_with_data()
-    print("✅ Excel opened and ready")
+    if not draft_text:
+        draft_text = """Hey there,
+
+Thanks for your message. I've looked into this and would be happy to discuss further.
+
+Best regards,
+[Your Name]"""
     
-    print("🎉 Workflow completed!")
+    # Open default email client instead of assuming Gmail
+    if os.name == 'posix':
+        subprocess.run(["open", "-a", "Mail"])
+    elif os.name == 'nt':
+        subprocess.run(["start", "outlook:"])
+    
+    time.sleep(3)  # Wait for client to open
+    
+    # Compose new email using keyboard shortcuts
+    SafeAutomation.press_key("command+n")
+    time.sleep(1)
+    
+    # Paste the draft text
+    SafeAutomation.paste_text(draft_text)
+    
+    return "Email draft created"
+
+def handle_spreadsheet_task(data=None, headers=None):
+    """Handle spreadsheet tasks with safer alternatives"""
+    logger.info("Handling spreadsheet task")
+    
+    if data is None:
+        data = [["Item 1", 100], ["Item 2", 200]]
+    
+    if headers is None:
+        headers = ["Item", "Value"]
+    
+    # Open spreadsheet application
+    if os.name == 'posix':
+        subprocess.run(["open", "-a", "Numbers"])  # Use Numbers on Mac, or change to "Microsoft Excel"
+    elif os.name == 'nt':
+        subprocess.run(["start", "excel"])
+    
+    time.sleep(3)  # Wait for application to open
+    
+    # For demonstration, we'll create a CSV file and open it
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+        # Write headers
+        f.write(','.join(headers) + '\n')
+        
+        # Write data rows
+        for row in data:
+            f.write(','.join(str(cell) for cell in row) + '\n')
+        
+        temp_path = f.name
+    
+    # Open the CSV file
+    if os.name == 'posix':
+        subprocess.run(["open", temp_path])
+    elif os.name == 'nt':
+        subprocess.run(["start", temp_path])
+    
+    logger.info(f"Created and opened spreadsheet: {temp_path}")
+    return f"Spreadsheet created with {len(data)} rows of data"
+
+def open_excel_with_data(data=None, headers=None):
+    """
+    Legacy function maintained for compatibility with API calls.
+    Now uses safer alternatives to PyAutoGUI.
+    """
+    return handle_spreadsheet_task(data, headers)

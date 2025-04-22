@@ -1,17 +1,24 @@
 """
-llm_task_analyzer.py - Task analysis using llama3.2 locally
+llm_task_analyzer.py - Task analysis using locally hosted llama3.2
 """
 from langchain_community.llms import Ollama
 from langchain_core.prompts import PromptTemplate
 import json
 import re
 import logging
+from config import get_ollama_config
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
+# Get Ollama configuration from environment
+ollama_config = get_ollama_config()
+
 # Initialize LLM with llama3.2 pointing to local Ollama server
-llm = Ollama(model="llama3.2", base_url="http://localhost:11434")
+llm = Ollama(
+    model=ollama_config["llm_model"],
+    base_url=ollama_config["base_url"]
+)
 
 ANALYZE_PROMPT = """
 You are an expert automation orchestrator. Given a user's request, break it down into a list of atomic, actionable steps that can be executed by either a browser automation agent or an Excel automation agent.
